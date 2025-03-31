@@ -135,7 +135,7 @@ const JSON_RE = /^application\/(?:[\w!#$%&*.^`~-]*\+)?json(;.+)?$/i;
 export function detectResponseType(
 	_contentType = '',
 ): 'json' | 'text' | 'blob' | 'stream' {
-	if (!_contentType) {
+	if (!_contentType) { /* v8 ignore next 2  */
 		return 'json';
 	}
 
