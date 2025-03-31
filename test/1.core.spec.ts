@@ -73,17 +73,22 @@ describe('Fexios Core', () => {
 	});
 
 	it('GET should not have body', async () => {
-		const promise = fexios.get<EchoResponse>(`${ECHO_BASE_URL}/get`, { body: 'test' });
-		expect(promise).to.rejects.with.instanceOf(FexiosError);
-		expect(promise).to.rejects.that.satisfies(isFexiosError);
+		const promise = fexios.get<EchoResponse>(`${ECHO_BASE_URL}/get`, {
+			body: 'test',
+		});
+		await expect(promise).to.rejects.with.instanceOf(FexiosError);
+		await expect(promise).to.rejects.that.satisfies(isFexiosError);
 	});
 
 	it('Bad status should throw ResponseError', async () => {
 		const promise = fexios.get<EchoResponse>(`${ECHO_BASE_URL}/_status/404`);
 
-		await expect(promise).to.rejects.instanceOf(FexiosResponseError)
-		await expect(promise).to.rejects.not.satisfies(isFexiosError)
-		await expect(promise).to.rejects.that.have.nested.property('response.data', '404');
+		await expect(promise).to.rejects.instanceOf(FexiosResponseError);
+		await expect(promise).to.rejects.not.satisfies(isFexiosError);
+		await expect(promise).to.rejects.that.have.nested.property(
+			'response.data',
+			'404',
+		);
 	});
 
 	it('POST with JSON', async () => {

@@ -1,7 +1,30 @@
 import CallableInstance from 'callable-instance';
-import { Time } from 'cosmokit';
+import { type Awaitable, Time } from 'cosmokit';
 import { safeDestr } from 'destr';
-import { fetch } from 'ofetch';
+import { type FetchResponse, type MappedResponseType, ofetch } from 'ofetch';
+import { TransformStream } from '#ofexios/stream-polyfill';
+import { FexiosError, FexiosErrorCodes, FexiosResponseError } from './error';
+import { FexiosResponse } from './response';
+import type {
+	FexiosConfigs,
+	FexiosContext,
+	FexiosFinalContext,
+	FexiosHook,
+	FexiosHookStore,
+	FexiosInterceptor,
+	FexiosInterceptors,
+	FexiosLifecycleEvents,
+	FexiosMethods,
+	FexiosRequestOptions,
+	FexiosRequestShortcut,
+} from './types';
+import { checkThrow, detectResponseType, readToUint8Array } from './utils';
+
+export { fetch } from 'ofetch';
+
+export * from './response';
+export * from './types';
+export * from './error';
 
 /**
  * Fexios
@@ -42,6 +65,11 @@ export class Fexios extends CallableInstance<
 		'head',
 		'options',
 		'trace',
+	];
+	private static readonly BLOB_MIME_TYPE: string[] = [
+		'image/',
+		'video/',
+		'audio/',
 	];
 
 	constructor(public baseConfigs: Partial<FexiosConfigs> = {}) {
@@ -132,7 +160,8 @@ export class Fexios extends CallableInstance<
 				delete (ctx.headers as any)['content-type'];
 			}
 			// If body is a string and ctx.body is an object, it means ctx.body is a JSON string
-			else if (typeof body === 'string' && typeof ctx.body === 'object') { /* v8 ignore next 3 */
+			else if (typeof body === 'string' && typeof ctx.body === 'object') {
+				/* v8 ignore next 3 */
 				(ctx.headers as any)['content-type'] =
 					'application/json; charset=UTF-8';
 			}
@@ -187,9 +216,11 @@ export class Fexios extends CallableInstance<
 				);
 			}
 		}, timeout);
-		const rawResponse = await fetch(ctx.rawRequest!).catch((err: any) => {
-			throw new FexiosError(FexiosErrorCodes.NETWORK_ERROR, err.message, ctx);
-		});
+		const rawResponse = await fetch(ctx.rawRequest!).catch((err: any) =>
+			Promise.reject(
+				new FexiosError(FexiosErrorCodes.NETWORK_ERROR, err.error.message, ctx),
+			),
+		);
 
 		ctx.rawResponse = rawResponse;
 		ctx.response = await Fexios.resolveResponseBody(
@@ -364,7 +395,11 @@ export class Fexios extends CallableInstance<
 	static async resolveResponseBody<T = any>(
 		rawResponse: Response,
 		expectType?: FexiosConfigs['responseType'],
-		onProgress?: (progress: number, buffer?: Uint8Array) => void,
+		onProgress?: (
+			progress: number,
+			chunk?: Uint8Array,
+			buffer?: Uint8Array,
+		) => void,
 	): Promise<FexiosResponse<T>> {
 		if (rawResponse.bodyUsed) {
 			throw new FexiosError(
@@ -385,7 +420,7 @@ export class Fexios extends CallableInstance<
 			typeof globalThis.WebSocket !== 'undefined'
 		) {
 			const ws = new WebSocket(rawResponse.url);
-			await new Promise<any>((resolve, reject) => {
+			await new Promise((resolve, reject) => {
 				ws.onopen = resolve;
 				ws.onerror = reject;
 			});
@@ -413,38 +448,59 @@ export class Fexios extends CallableInstance<
 		if (expectType === 'stream') {
 			return new FexiosResponse(
 				rawResponse,
-				rawResponse.body as ReadableStream as T,
+				safeDestr<T>(await rawResponse.text()),
 			);
 		}
 
+		const preferType =
+			expectType ||
+			detectResponseType(rawResponse.headers.get('content-type') || '');
+
+		if (!expectType && preferType === 'stream') {
+			let count = 0;
+			const transformer = new TransformStream({
+				transform(chunk, controller) {
+					controller.enqueue(chunk);
+					count += chunk.length;
+					onProgress?.(count, chunk);
+				},
+				flush(controller) {
+					controller.terminate();
+				},
+			});
+			return new FexiosResponse(
+				rawResponse,
+				rawResponse.body?.pipeThrough(transformer) as ReadableStream as T,
+			);
+		}
+
+		if (
+			expectType === 'blob' ||
+			contentType.startsWith('image/') ||
+			contentType.startsWith('video/') ||
+			contentType.startsWith('audio/')
+		) {
+			return new FexiosResponse(rawResponse, <any>await rawResponse.blob());
+		}
+
 		// Check if the response is a ReadableStream
-		const reader = rawResponse.body?.getReader();
-		if (!reader) {
+		const stream = rawResponse.body;
+		if (!stream) {
 			throw new FexiosError(
 				FexiosErrorCodes.NO_BODY_READER,
 				'Failed to get ReadableStream from response body',
 			);
 		}
-		let buffer = new Uint8Array();
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			buffer = new Uint8Array([...buffer, ...value]);
-			if (onProgress && contentLength) {
-				onProgress(buffer.length / contentLength, buffer);
-			}
-		}
+		const buffer = await readToUint8Array(
+			stream, // allowing preallocating buffer
+			+(rawResponse.headers.get('content-length') || 0),
+			onProgress,
+		);
 
 		const res = new FexiosResponse(rawResponse, undefined as any);
 
 		// Guess the response type, maybe a Blob?
-		if (
-			expectType === 'blob' ||
-			contentType.startsWith('image/') ||
-			contentType.startsWith('video/') ||
-			contentType.startsWith('audio/') ||
-			!this.isText(buffer)
-		) {
+		if (!this.isText(buffer)) {
 			res.data = new Blob([buffer], {
 				type: rawResponse.headers.get('content-type') || undefined,
 			}) as Blob as T;
@@ -472,13 +528,7 @@ export class Fexios extends CallableInstance<
 			res.data = buffer.length > 0 ? (buffer as any) : undefined;
 		}
 
-		if (!res.ok) {
-			throw new FexiosResponseError(
-				`Request failed with status code ${rawResponse.status}`,
-				res as any,
-			);
-		}
-		return res;
+		return checkThrow(res);
 	}
 
 	static isText(uint8Array: Uint8Array, maxBytesToCheck = 1024) {
@@ -540,148 +590,7 @@ export interface Fexios {
 	trace: FexiosRequestShortcut<'trace'>;
 }
 
-export class FexiosResponse<T = any> {
-	public ok: boolean;
-	public status: number;
-	public statusText: string;
-	public headers: Headers;
-	constructor(
-		public rawResponse: Response,
-		public data: T,
-		overrides?: Partial<Omit<FexiosResponse<T>, 'rawResponse' | 'data'>>,
-	) {
-		this.ok = rawResponse.ok;
-		this.status = rawResponse.status;
-		this.statusText = rawResponse.statusText;
-		this.headers = rawResponse.headers;
-		for (const [key, value] of Object.entries(overrides || {})) {
-			(this as any)[key] = value;
-		}
-	}
-}
-
-export enum FexiosErrorCodes {
-	BODY_USED = 'BODY_USED',
-	NO_BODY_READER = 'NO_BODY_READER',
-	TIMEOUT = 'TIMEOUT',
-	NETWORK_ERROR = 'NETWORK_ERROR',
-	BODY_NOT_ALLOWED = 'BODY_NOT_ALLOWED',
-	HOOK_CONTEXT_CHANGED = 'HOOK_CONTEXT_CHANGED',
-	ABORTED_BY_HOOK = 'ABORTED_BY_HOOK',
-	INVALID_HOOK_CALLBACK = 'INVALID_HOOK_CALLBACK',
-	UNEXPECTED_HOOK_RETURN = 'UNEXPECTED_HOOK_RETURN',
-}
-export class FexiosError extends Error {
-	name = 'FexiosError';
-	constructor(
-		readonly code: FexiosErrorCodes | string,
-		message?: string,
-		readonly context?: FexiosContext,
-		options?: ErrorOptions,
-	) {
-		super(message, options);
-	}
-}
-export class FexiosResponseError<T> extends FexiosError {
-	name = 'FexiosResponseError';
-	constructor(
-		message: string,
-		readonly response: FexiosResponse<T>,
-		options?: ErrorOptions,
-	) {
-		super(response.statusText, message, undefined, options);
-	}
-}
-/**
- * Check if the error is a FexiosError that not caused by Response error
- */
-export const isFexiosError = (e: any): boolean => {
-	return !(e instanceof FexiosResponseError) && e instanceof FexiosError;
-};
-
 // Support for direct import
 export const createFexios = Fexios.create;
 export const fexios = createFexios();
 export default fexios;
-
-export type AwaitAble<T = unknown> = Promise<T> | T;
-export interface FexiosConfigs {
-	baseURL: string;
-	timeout: number;
-	query: Record<string, string | number | boolean> | URLSearchParams;
-	headers: Record<string, string> | Headers;
-	credentials?: RequestInit['credentials'];
-	cache?: RequestInit['cache'];
-	mode?: RequestInit['mode'];
-	responseType?: 'json' | 'blob' | 'text' | 'stream';
-}
-export interface FexiosRequestOptions extends FexiosConfigs {
-	url?: string | URL;
-	method?: FexiosMethods;
-	body?: Record<string, any> | string | FormData | URLSearchParams;
-	abortController?: AbortController;
-	onProgress?: (progress: number, buffer?: Uint8Array) => void;
-}
-export interface FexiosContext<T = any> extends FexiosRequestOptions {
-	url: string;
-	rawRequest?: Request;
-	rawResponse?: Response;
-	response?: FexiosResponse;
-	data?: T;
-}
-export type FexiosFinalContext<T = any> = Omit<
-	FexiosContext<T>,
-	'rawResponse' | 'response' | 'data' | 'headers'
-> & {
-	rawResponse: Response;
-	response: FexiosResponse<T>;
-	headers: Headers;
-	data: T;
-};
-export type FexiosHook<C = unknown> = (context: C) => AwaitAble<C | false>;
-export interface FexiosHookStore {
-	event: FexiosLifecycleEvents;
-	action: FexiosHook;
-}
-export type FexiosLifecycleEvents =
-	| 'beforeInit'
-	| 'beforeRequest'
-	| 'afterBodyTransformed'
-	| 'beforeActualFetch'
-	| 'afterResponse';
-export interface FexiosHooksNameMap {
-	beforeInit: FexiosContext;
-	beforeRequest: FexiosContext;
-	afterBodyTransformed: FexiosContext;
-	beforeActualFetch: FexiosContext;
-	afterResponse: FexiosFinalContext;
-}
-export interface FexiosInterceptor {
-	handlers: () => FexiosHook[];
-	use: <C = FexiosContext>(hook: FexiosHook<C>, prepend?: boolean) => Fexios;
-	clear: () => void;
-}
-export interface FexiosInterceptors {
-	request: FexiosInterceptor;
-	response: FexiosInterceptor;
-}
-
-type LowerAndUppercase<T extends string> = Lowercase<T> | Uppercase<T>;
-export type FexiosMethods = LowerAndUppercase<
-	'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options' | 'trace'
->;
-
-type MethodsWithoutBody = LowerAndUppercase<
-	'get' | 'head' | 'options' | 'trace'
->;
-export type FexiosRequestShortcut<M extends FexiosMethods> =
-	M extends MethodsWithoutBody ? ShortcutWithoutBody : ShortcutWithBody;
-type ShortcutWithoutBody = <T = any>(
-	url: string | URL,
-	options?: Partial<FexiosRequestOptions>,
-) => Promise<FexiosFinalContext<T>>;
-type ShortcutWithBody = <T = any>(
-	url: string | URL,
-	body?: Record<string, any> | string | URLSearchParams | FormData | null,
-	options?: Partial<FexiosRequestOptions>,
-) => Promise<FexiosFinalContext<T>>;

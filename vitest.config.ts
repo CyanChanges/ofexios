@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { polyfill } from './build.config';
 
 export default defineConfig({
+	plugins: [polyfill()],
 	test: {
 		coverage: {
 			enabled: true,

@@ -14,7 +14,7 @@
 		"verbatimModuleSyntax": true,
 		"sourceMap": true,
 		"resolveJsonModule": true,
-		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"lib": ["ESNext", "DOM", "DOM.Iterable", "DOM.AsyncIterable"],
 		"declaration": true,
 		"outDir": "lib",
 		"noEmit": true,
