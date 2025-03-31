@@ -1,6 +1,6 @@
 <div align="center">
 
-# Fexios
+# OFexios
 
 *a fork of [fexios](https://github.com/dragon-fish/fexios)*
 
@@ -20,7 +20,7 @@ unjs/ofetch based HTTP client with similar API to axios for browser and Node.js
 - [x] 😏 Automatic transforms for JSON data
 - [x] 🤩 Instances with custom defaults
 - [x] 🫡 Instance extendable
-- [x] 😍 Fricking tiny size: `index.mjs  7.73 kB │ gzip: 3.1 kB │ map: 30 kB`
+- [x] 😍 Fricking tiny size: `index.mjs  9.52 kB │ gzip: 3.8 KB │ map: 38 KB`
 
 ## 安装 Installation
 
@@ -58,7 +58,7 @@ const fexios = Fexios.create(/* options */)
 - JS Module
 
 ```ts
-import('https://unpkg.com/fexios?module').then(({ createFexios }) => {
+import('https://unpkg.com/ofexios?module').then(({ createFexios }) => {
   const fexios = createFexios(/* options */)
 })
 ```

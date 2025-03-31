@@ -42,7 +42,7 @@ export default defineBuildConfig({
 	rollup: {
 		esbuild: {
 			drop: PROD ? ['console'] : undefined,
-			// minify: true,
+			minify: true,
 		},
 		emitCJS: true,
 		inlineDependencies: ['#ofexios/stream-polyfill'],
