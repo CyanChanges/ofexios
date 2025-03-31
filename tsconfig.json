@@ -1,25 +1,27 @@
 {
-  "compilerOptions": {
-    "target": "ES2019",
-    "module": "ESNext",
-    "strict": true,
-    "importHelpers": true,
-    "moduleResolution": "Bundler",
-    "experimentalDecorators": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
-    "resolveJsonModule": true,
-    "types": ["node"],
-    "lib": ["ESNext", "DOM"],
-    "declaration": true,
-    "outDir": "lib",
-    "noEmit": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src"],
-  "exclude": ["lib", "dist"]
+	"compilerOptions": {
+		"target": "ES2019",
+		"module": "ESNext",
+		"strict": true,
+		"importHelpers": true,
+		"moduleResolution": "Bundler",
+		"experimentalDecorators": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"allowJs": true,
+		"isolatedModules": true,
+    "verbatimModuleSyntax": true,
+		"sourceMap": true,
+		"resolveJsonModule": true,
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"declaration": true,
+		"outDir": "lib",
+		"noEmit": true,
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": ["src"],
+	"exclude": ["lib", "dist"]
 }
