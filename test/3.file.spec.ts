@@ -1,7 +1,7 @@
+import { File } from '@web-std/file';
 import { describe, expect, it } from 'vitest';
 import fexios from '../src/index';
-import { File } from '@web-std/file';
-import { EchoResponse } from './MockData';
+import type { EchoResponse } from './MockData';
 import { ECHO_BASE_URL } from './constants';
 
 // create a fake png file with 1x1 pixel

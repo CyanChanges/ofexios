@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import fexios, {
 	Fexios,
 	FexiosError,
-	FexiosFinalContext,
+	type FexiosFinalContext,
 	FexiosResponse,
 	FexiosResponseError,
 	isFexiosError,
 } from '../src/index';
-import { EchoResponse } from './MockData';
+import type { EchoResponse } from './MockData';
 import { ECHO_BASE_URL } from './constants';
 
 const time = String(Date.now());
@@ -73,26 +73,17 @@ describe('Fexios Core', () => {
 	});
 
 	it('GET should not have body', async () => {
-		let error: FexiosError | undefined;
-		try {
-			await fexios.get<EchoResponse>(`${ECHO_BASE_URL}/get`, { body: 'test' });
-		} catch (e) {
-			error = e;
-		}
-		expect(error).to.be.instanceOf(FexiosError);
-		expect(isFexiosError(error)).to.be.true;
+		const promise = fexios.get<EchoResponse>(`${ECHO_BASE_URL}/get`, { body: 'test' });
+		expect(promise).to.rejects.with.instanceOf(FexiosError);
+		expect(promise).to.rejects.that.satisfies(isFexiosError);
 	});
 
 	it('Bad status should throw ResponseError', async () => {
-		let error: FexiosResponseError<string> | undefined;
-		try {
-			await fexios.get<EchoResponse>(`${ECHO_BASE_URL}/_status/404`);
-		} catch (e) {
-			error = e;
-		}
-		expect(error).to.be.instanceOf(FexiosResponseError);
-		expect(isFexiosError(error)).to.be.false;
-		expect(error?.response.data).to.equal('404');
+		const promise = fexios.get<EchoResponse>(`${ECHO_BASE_URL}/_status/404`);
+
+		await expect(promise).to.rejects.instanceOf(FexiosResponseError)
+		await expect(promise).to.rejects.not.satisfies(isFexiosError)
+		await expect(promise).to.rejects.that.have.nested.property('response.data', '404');
 	});
 
 	it('POST with JSON', async () => {
@@ -104,7 +95,7 @@ describe('Fexios Core', () => {
 
 	it('POST with URLSearchParams', async () => {
 		const form = new URLSearchParams();
-		const time = '' + Date.now();
+		const time = String(Date.now());
 		form.append('time', time);
 		const { data } = await fexios.post<EchoResponse>(
 			`${ECHO_BASE_URL}/post`,
@@ -115,7 +106,7 @@ describe('Fexios Core', () => {
 
 	it('POST with FormData', async () => {
 		const form = new FormData();
-		const time = '' + Date.now();
+		const time = String(Date.now());
 		form.append('time', time);
 		const { data } = await fexios.post<EchoResponse>(
 			`${ECHO_BASE_URL}/post`,

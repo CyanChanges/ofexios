@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { Fexios, FexiosFinalContext } from '../src/index';
-import { EchoResponse } from './MockData';
+import { Fexios, type FexiosFinalContext } from '../src/index';
+import type { EchoResponse } from './MockData';
 import { ECHO_BASE_URL } from './constants';
 
-const time = '' + Date.now();
+const time = String(Date.now());
 
 describe('Fexios Hooks', () => {
 	it('[HOOKS] register hooks', async () => {

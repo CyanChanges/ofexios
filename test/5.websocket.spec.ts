@@ -19,7 +19,7 @@ describe('WebSocket', () => {
 
 	it('WebSocket message', async () => {
 		const { data: ws } = await fexios.get<WebSocket>(WS_URL);
-		const now = '' + Date.now();
+		const now = String(Date.now());
 		ws.send(now);
 		const response = await new Promise<string>((resolve) => {
 			ws.addEventListener('message', (event) => {

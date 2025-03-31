@@ -11,7 +11,7 @@
 		"allowSyntheticDefaultImports": true,
 		"allowJs": true,
 		"isolatedModules": true,
-    "verbatimModuleSyntax": true,
+		"verbatimModuleSyntax": true,
 		"sourceMap": true,
 		"resolveJsonModule": true,
 		"lib": ["ESNext", "DOM", "DOM.Iterable"],

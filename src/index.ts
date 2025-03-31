@@ -1,5 +1,7 @@
-import { fetch } from 'ofetch';
 import CallableInstance from 'callable-instance';
+import { Time } from 'cosmokit';
+import { safeDestr } from 'destr';
+import { fetch } from 'ofetch';
 
 /**
  * Fexios
@@ -19,7 +21,7 @@ export class Fexios extends CallableInstance<
 	protected hooks: FexiosHookStore[] = [];
 	readonly DEFAULT_CONFIGS: FexiosConfigs = {
 		baseURL: '',
-		timeout: 60 * 1000,
+		timeout: Time.minute,
 		credentials: 'same-origin',
 		headers: {},
 		query: {},
@@ -130,7 +132,7 @@ export class Fexios extends CallableInstance<
 				delete (ctx.headers as any)['content-type'];
 			}
 			// If body is a string and ctx.body is an object, it means ctx.body is a JSON string
-			else if (typeof body === 'string' && typeof ctx.body === 'object') {
+			else if (typeof body === 'string' && typeof ctx.body === 'object') { /* v8 ignore next 3 */
 				(ctx.headers as any)['content-type'] =
 					'application/json; charset=UTF-8';
 			}
@@ -146,7 +148,7 @@ export class Fexios extends CallableInstance<
 		const abortController =
 			ctx.abortController || globalThis.AbortController
 				? new AbortController()
-				: undefined;
+				: /* v8 ignore next */ undefined;
 		const rawRequest = new Request(ctx.url, {
 			method: ctx.method || 'GET',
 			credentials: ctx.credentials,
@@ -174,7 +176,7 @@ export class Fexios extends CallableInstance<
 			return this.emit('afterResponse', ctx) as any;
 		}
 
-		const timeout = ctx.timeout || this.baseConfigs.timeout || 60 * 1000;
+		const timeout = ctx.timeout || this.baseConfigs.timeout || Time.minute;
 		const timer = setTimeout(() => {
 			abortController?.abort();
 			if (!abortController) {
@@ -458,15 +460,10 @@ export class Fexios extends CallableInstance<
 			expectType !== 'text' &&
 			(expectType === 'json' || contentType.startsWith('application/json'))
 		) {
-			if (
-				(res.data[0] === '{' && res.data[res.data.length - 1] === '}') ||
-				(res.data[0] === '[' && res.data[res.data.length - 1] === ']')
-			) {
-				try {
-					res.data = JSON.parse(res.data as string) as T;
-				} catch (e) {
-					console.warn('Failed to parse response data as JSON:', e);
-				}
+			try {
+				res.data = safeDestr<T>(res.data);
+			} catch (e) {
+				console.warn('Failed to parse response data as JSON:', e);
 			}
 		}
 

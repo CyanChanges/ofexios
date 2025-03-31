@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fexios, { Fexios } from '../src/index';
-import { EchoResponse } from './MockData';
+import type { EchoResponse } from './MockData';
 import { ECHO_BASE_URL } from './constants';
 
 // @ts-ignore

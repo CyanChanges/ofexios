@@ -20,7 +20,7 @@ unjs/ofetch based HTTP client with similar API to axios for browser and Node.js
 - [x] 😏 Automatic transforms for JSON data
 - [x] 🤩 Instances with custom defaults
 - [x] 🫡 Instance extendable
-- [x] 😍 Fricking tiny size: `index.mjs  14.1 kB │ gzip: 4.0 kB │ map: 35 kB`
+- [x] 😍 Fricking tiny size: `index.mjs  7.73 kB │ gzip: 3.1 kB │ map: 30 kB`
 
 ## 安装 Installation
 
