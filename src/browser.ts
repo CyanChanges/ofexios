@@ -1,6 +1,8 @@
 import fexios from './index';
 import type { Fexios } from './index';
 
+export * from './index'
+
 // Set global fexios instance for browser
 declare global {
 	interface Window {

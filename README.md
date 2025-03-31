@@ -2,41 +2,47 @@
 
 # Fexios
 
-类 Axios 语法的原生 fetch API 请求封装库<br>
-Fetch based HTTP client with similar API to axios for browser and Node.js
+*a fork of [fexios](https://github.com/dragon-fish/fexios)*
 
-~~fetch + axios = fexios~~ (Just a joke)
+类 Axios 语法的原生 unjs/ofetch API 请求封装库<br>
+unjs/ofetch based HTTP client with similar API to axios for browser and Node.js
+
+~~ofetch + axios = ofexios~~ (Just a joke)
 
 </div>
 
 ## 特色功能 Features
 
-- [x] 🤯 Native fetch API (supports the Promise API)
+- [x] 🤯 auto-polyfills native fetch API (supports the Promise API)
 - [x] 🤫 Method shortcuts (`fexios.post()`)
 - [x] 🔗 Hooks (intercept request and response)
 - [x] 😏 Automatic transform request and response data
 - [x] 😏 Automatic transforms for JSON data
 - [x] 🤩 Instances with custom defaults
 - [x] 🫡 Instance extendable
-- [x] 😍 Fricking tiny size: `index.umd.cjs  8.51 kB │ gzip: 3.48 kB │ map: 31.96 kB`
+- [x] 😍 Fricking tiny size: `index.mjs  14.1 kB │ gzip: 4.0 kB │ map: 35 kB`
 
 ## 安装 Installation
 
 **包管理器 Using package manager**
 
 ```sh
-# Node Package Manager
-npm install fexios
-# Why not pnpm
-pnpm add fexios
-# Or yarn?
-yarn add fexios
+# bun
+bun add ofexios
+# Deno
+deno add ofexios
+# npm
+npm install ofexios
+# Why not yarn
+yarn add ofexios
+# Or pnpm
+pnpm add ofexios
 ```
 
 Then import the library and enjoy:
 
 ```ts
-import fexios, { createFexios, Fexios } from 'fexios'
+import fexios, { createFexios, Fexios } from 'ofexios'
 
 // Using directly
 fexios.get('https://zh.moegirl.org.cn/api.php')
@@ -60,7 +66,7 @@ import('https://unpkg.com/fexios?module').then(({ createFexios }) => {
 - Global variables
 
 ```html
-<script src="https://unpkg.com/fexios"></script>
+<script src="https://unpkg.com/ofexios"></script>
 
 <script>
   // Using directly
@@ -74,6 +80,8 @@ import('https://unpkg.com/fexios?module').then(({ createFexios }) => {
 
 ## 兼容性 Compatibility
 
+### Browser
+
 Refer: https://developer.mozilla.org/docs/Web/API/Fetch_API
 
 | Chrome | Edge | Firefox | Opera | Safari          | Node.js                |
@@ -81,6 +89,12 @@ Refer: https://developer.mozilla.org/docs/Web/API/Fetch_API
 | 42     | 14   | 39      | 29    | 10.1 (iOS 10.3) | ^16.15.0 \|\| >=18.0.0 |
 
 \* Abort signal requires higher version.
+
+Use [unfetch](https://github.com/developit/unfetch) for older browsers.
+
+### Node.JS
+
+See [unjs/node-fetch-native](https://github.com/unjs/node-fetch-native)
 
 ## 使用方法 Usage
 
@@ -267,4 +281,7 @@ fexios.interceptors.response.use((ctx) => {})
 
 > MIT License
 >
+> Copyright (c) 2025 Cyan Changes
+>
+> Originally created by:
 > Copyright (c) 2023 机智的小鱼君 (A.K.A. Dragon-Fish)
